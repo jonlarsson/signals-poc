@@ -19,6 +19,8 @@ npm install
 npm run dev
 ```
 
+I webbläsarens js-konsoll kan man köra DEBUG_TOOLS.printGraph() för att få en representation av graferna utskriven.
+
 ## Signaler
 
 ### signal<T>(...): WritableSignal<T>

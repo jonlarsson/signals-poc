@@ -11,26 +11,34 @@ function input(vardeSignal: WritableSignal<string>): HTMLInputElement {
 	return inputElement;
 }
 
-function output(vardeSignal: Signal<string>): Element {
+function output(visaVardeSignal: Signal<boolean>, vardeSignal: Signal<string>): Element {
 	let outputElement = document.createElement('div');
+	const text = document.createTextNode('');
+	outputElement.append(text);
 	consume(() => {
-		outputElement.innerHTML = vardeSignal();
-	}, 'output');
+		if (visaVardeSignal()) {
+			text.data = 'Värde: ' + vardeSignal();
+		} else {
+			text.data = ''
+		}
+	}, 'consume: VisningVarde');
 	return outputElement;
 }
 
-function raknaTecken(raknaTeckenSignal: WritableSignal<boolean>): Element {
-	const checkboxTeckenLabel = document.createElement('label');
-	const checkboxTecken = document.createElement('input');
-	checkboxTecken.setAttribute('type', 'checkbox');
-	checkboxTecken.setAttribute('name', 'raknaTecken');
-	checkboxTecken.setAttribute('value', 'tecken');
-	checkboxTecken.checked = raknaTeckenSignal();
-	checkboxTeckenLabel.append(checkboxTecken, document.createTextNode('Räkna tecken'));
-	checkboxTecken.addEventListener('change', () => {
-		raknaTeckenSignal.set(checkboxTecken.checked);
+function checkbox(checkedSignal: WritableSignal<boolean>, name: string, label: string): Element {
+	const checkboxLabel = document.createElement('label');
+	const checkbox = document.createElement('input');
+	checkbox.setAttribute('type', 'checkbox');
+	checkbox.setAttribute('name', name);
+	checkbox.setAttribute('value', 'true');
+	checkbox.checked = checkedSignal();
+	checkboxLabel.append(checkbox, document.createTextNode(label));
+	checkbox.addEventListener('change', () => {
+		checkedSignal.set(checkbox.checked);
 	});
-	return checkboxTeckenLabel;
+	let div = document.createElement('div');
+	div.append(checkboxLabel);
+	return div;
 }
 
 function antal(antalSignal: Signal<number>): Element {
@@ -40,24 +48,26 @@ function antal(antalSignal: Signal<number>): Element {
 	antalElement.append(labelElement, countElement);
 	consume(() => {
 		countElement.innerHTML = antalSignal() + '';
-	}, 'antal');
+	}, 'consume: VisningAntalTecken');
 	return antalElement;
 }
 
 function main(): Element {
 	let mainElement = document.createElement('div');
 
-	const vardeSignal = signal('');
-	const raknaTeckenSignal = signal<boolean>(true);
+	const visaVardeSignal = signal(true, 'visaVardeSignal');
+	const vardeSignal = signal('', 'vardeSignal');
+	const raknaTeckenSignal = signal<boolean>(true, 'raknaTeckenSignal');
 	const antalSignal = computed(() => {
 		if (raknaTeckenSignal()) {
 			return vardeSignal().length;
 		}
 		return 0;
-	});
+	}, 'computed: AntalTecken');
 	mainElement.append(input(vardeSignal));
-	mainElement.append(output(vardeSignal));
-	mainElement.append(raknaTecken(raknaTeckenSignal))
+	mainElement.append(checkbox(visaVardeSignal, 'visaVarde','Visa värde'))
+	mainElement.append(output(visaVardeSignal, vardeSignal));
+	mainElement.append(checkbox(raknaTeckenSignal, 'raknaTecken', 'Räkna tecken'))
 	mainElement.append(antal(antalSignal));
 	return mainElement;
 }
