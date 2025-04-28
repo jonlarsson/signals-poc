@@ -67,19 +67,26 @@ export function signal<T>(initial: T): WritableSignal<T> {
 	return getter as WritableSignal<T>;
 }
 
+const computedValueInit = Symbol('computedValueInit');
+type ComputedValueInit = typeof computedValueInit;
 export function computed<T>(compute: () => T): Signal<T> {
-	let value: T;
+	let value: T | ComputedValueInit = computedValueInit;
 	const node: Consumer & Producer = {
 		name: 'computed',
 		valueUpdated: () => {
-			valueUpdated(node)
+			// vi behöver räkna om värdet varje gång något beroende ändras
+			const computedValue = computeValue();
+			if (computedValue !== value) {
+				value = computedValue;
+				valueUpdated(node)
+			}
 		},
 		dependencies: [],
 		consumers: []
 	};
-	const computeValue = () => {
+	const computeValue = (): T => {
 		const prevConsumer: Consumer | null = activeConsumer;
-		let computedValue = value;
+		let computedValue: T | ComputedValueInit = value;
 		const prevDependencies = node.dependencies;
 		node.dependencies = [];
 		activeConsumer = node;
@@ -92,13 +99,13 @@ export function computed<T>(compute: () => T): Signal<T> {
 		for (const staleDep of staleDeps) {
 			staleDep.consumers.splice(staleDep.consumers.indexOf(node), 1);
 		}
-		if (value !== computedValue) {
-			value = computedValue;
-			valueUpdated(node)
-		}
+		return computedValue;
 	}
 	return () => {
-		computeValue();
+		if (value === computedValueInit) {
+			// Om vi aldrig beräknat värdet måste det göras först. Därefter hanteras det vid uppdateringar från beroenden i value updated.
+			value = computeValue();
+		}
 		signalConsumed(node);
 		return value;
 	};
